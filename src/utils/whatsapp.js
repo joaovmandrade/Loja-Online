@@ -8,7 +8,7 @@ export function formatPrice(value) {
   }).format(value);
 }
 
-export function buildWhatsAppUrl({ items, subtotal, discount, shipping, total, couponCode }) {
+export function buildWhatsAppUrl({ items, subtotal, discount, shipping, total, couponCode, address }) {
   const itemLines = items
     .map(
       (item) =>
@@ -18,10 +18,12 @@ export function buildWhatsAppUrl({ items, subtotal, discount, shipping, total, c
 
   const discountLine = discount > 0 ? `Desconto (${couponCode}): -${formatPrice(discount)}\n` : '';
   const shippingLabel = shipping === 0 ? 'Frete: Grátis 🎁\n' : `Frete: ${formatPrice(shipping)}\n`;
+  const addressText = address ? `📍 *Endereço de Entrega:*\n${address}\n\n` : '';
 
   const message =
     `Olá! Quero fazer um pedido:\n\n` +
     `${itemLines}\n\n` +
+    `${addressText}` +
     `Subtotal: ${formatPrice(subtotal)}\n` +
     `${discountLine}` +
     `${shippingLabel}` +
