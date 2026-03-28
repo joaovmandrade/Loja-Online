@@ -19,7 +19,19 @@ function StarRating({ rating }) {
 }
 
 export default function ProductCard({ product }) {
-  const { name, price, originalPrice, image_url, stock, category, rating, isFeatured, isOnSale, salesCount } = product;
+  const { 
+    name, 
+    price, 
+    originalPrice = null, 
+    image_url = '', 
+    stock = 0, 
+    category = 'Geral', 
+    rating = 5.0, 
+    isFeatured = false, 
+    isOnSale = false, 
+    salesCount = 0 
+  } = product || {};
+  
   const { addToCart, items } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
 

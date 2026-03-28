@@ -1,5 +1,5 @@
 
-export const WHATSAPP_PHONE = '5511999999999';
+export const WHATSAPP_PHONE = '5562981756077';
 
 export function formatPrice(value) {
   return new Intl.NumberFormat('pt-BR', {

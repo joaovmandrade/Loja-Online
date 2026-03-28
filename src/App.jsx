@@ -8,20 +8,11 @@ import Favorites from './components/Favorites';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
 import Home from './pages/Home';
 import Admin from './pages/Admin';
-import { INITIAL_PRODUCTS } from './data/products';
+import NotFound from './pages/NotFound';
 
 export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const [favOpen, setFavOpen]  = useState(false);
-
-  const products = (() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem('admin_products'));
-      return Array.isArray(stored) && stored.length > 0 ? stored : INITIAL_PRODUCTS;
-    } catch {
-      return INITIAL_PRODUCTS;
-    }
-  })();
 
   return (
     <BrowserRouter>
@@ -37,6 +28,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/admin" element={<Admin />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
 
@@ -45,7 +37,7 @@ export default function App() {
             </footer>
 
             <Cart open={cartOpen} onClose={() => setCartOpen(false)} />
-            <Favorites open={favOpen} onClose={() => setFavOpen(false)} products={products} />
+            <Favorites open={favOpen} onClose={() => setFavOpen(false)} />
 
             <FloatingWhatsApp />
           </div>

@@ -1,14 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Heart, ShoppingCart } from 'lucide-react';
 import { useFavorites } from '../context/FavoritesContext';
 import { useCart } from '../context/CartContext';
 import { formatPrice } from '../utils/whatsapp';
+import { supabase } from '../services/supabase';
 
-export default function Favorites({ open, onClose, products }) {
+export default function Favorites({ open, onClose }) {
   const { favorites, toggleFavorite } = useFavorites();
   const { addToCart } = useCart();
+  const [favProducts, setFavProducts] = useState([]);
 
-  const favProducts = products.filter((p) => favorites.includes(p.id));
+  useEffect(() => {
+    if (open && favorites.length > 0) {
+      supabase
+        .from('products')
+        .select('*')
+        .in('id', favorites)
+        .then(({ data }) => {
+          if (data) setFavProducts(data);
+        });
+    } else if (favorites.length === 0) {
+      setFavProducts([]);
+    }
+  }, [open, favorites]);
 
   return (
     <>

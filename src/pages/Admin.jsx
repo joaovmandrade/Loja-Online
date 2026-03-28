@@ -1,24 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, Save, X, Package, AlertTriangle } from 'lucide-react';
-import { INITIAL_PRODUCTS, CATEGORIES } from '../data/products';
+import { CATEGORIES } from '../data/products';
 import { formatPrice } from '../utils/whatsapp';
+import { supabase } from '../services/supabase';
 
 const EMPTY_FORM = {
-  name: '', price: '', originalPrice: '', stock: '',
-  category: 'Camisetas', image_url: '', rating: '4.5',
-  isFeatured: false, isOnSale: false, salesCount: '0',
+  name: '', price: '', stock: '', image_url: '', category: 'Camisetas'
 };
 
 export default function Admin() {
-  const [products, setProducts] = useState(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem('admin_products'));
-      return Array.isArray(stored) && stored.length > 0 ? stored : INITIAL_PRODUCTS;
-    } catch {
-      return INITIAL_PRODUCTS;
-    }
-  });
-
+  const [products, setProducts] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -26,8 +17,20 @@ export default function Admin() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('admin_products', JSON.stringify(products));
-  }, [products]);
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('id', { ascending: false }); // or created_at if it exists, let's just fetch all
+    if (error) {
+      console.error('Erro ao buscar produtos:', error);
+    } else if (data) {
+      setProducts(data);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -40,24 +43,31 @@ export default function Admin() {
     setShowForm(false);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const productData = {
-      ...form,
-      id: editingId ?? Date.now(),
+      name: form.name,
       price: parseFloat(form.price) || 0,
-      originalPrice: form.originalPrice ? parseFloat(form.originalPrice) : undefined,
       stock: parseInt(form.stock) || 0,
-      rating: parseFloat(form.rating) || 4.5,
-      salesCount: parseInt(form.salesCount) || 0,
+      image_url: form.image_url,
+      category: form.category || 'Geral',
     };
 
     if (editingId) {
-      setProducts((prev) => prev.map((p) => p.id === editingId ? productData : p));
+      const { error } = await supabase.from('products').update(productData).eq('id', editingId);
+      if (error) {
+        console.error('Erro ao atualizar produto:', error);
+        return;
+      }
     } else {
-      setProducts((prev) => [productData, ...prev]);
+      const { error } = await supabase.from('products').insert([productData]);
+      if (error) {
+        console.error('Erro ao criar produto:', error);
+        return;
+      }
     }
 
+    await fetchProducts();
     resetForm();
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -67,28 +77,23 @@ export default function Admin() {
     setForm({
       name: product.name,
       price: String(product.price),
-      originalPrice: product.originalPrice ? String(product.originalPrice) : '',
       stock: String(product.stock),
-      category: product.category,
       image_url: product.image_url || '',
-      rating: String(product.rating),
-      isFeatured: product.isFeatured,
-      isOnSale: product.isOnSale,
-      salesCount: String(product.salesCount),
+      category: product.category || 'Camisetas',
     });
     setEditingId(product.id);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = (id) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+  const handleDelete = async (id) => {
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) {
+      console.error('Erro ao excluir produto:', error);
+    } else {
+      await fetchProducts();
+    }
     setDeleteId(null);
-  };
-
-  const handleReset = () => {
-    setProducts(INITIAL_PRODUCTS);
-    localStorage.removeItem('admin_products');
   };
 
   const inputClass = 'w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-400 text-slate-700 bg-white';
@@ -99,17 +104,10 @@ export default function Admin() {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-800">Painel Admin</h1>
           <p className="text-slate-500 text-sm mt-1">
-            Dados salvos no <code className="bg-slate-100 px-1 rounded text-indigo-600">localStorage</code> do navegador
+            Dados sincronizados com o banco de dados <code className="bg-slate-100 px-1 rounded text-indigo-600">Supabase</code>
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
-          >
-            <AlertTriangle className="w-4 h-4" />
-            Resetar
-          </button>
           <button
             onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(EMPTY_FORM); }}
             className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm active:scale-95"
@@ -134,7 +132,7 @@ export default function Admin() {
             {editingId ? 'Editar Produto' : 'Novo Produto'}
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Nome *</label>
               <input name="name" required value={form.name} onChange={handleChange} placeholder="Nome do produto" className={inputClass} />
@@ -143,11 +141,6 @@ export default function Admin() {
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Preço (R$) *</label>
               <input name="price" required type="number" min="0" step="0.01" value={form.price} onChange={handleChange} placeholder="0.00" className={inputClass} />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Preço original (opcional)</label>
-              <input name="originalPrice" type="number" min="0" step="0.01" value={form.originalPrice} onChange={handleChange} placeholder="Para mostrar desconto" className={inputClass} />
             </div>
 
             <div>
@@ -164,30 +157,9 @@ export default function Admin() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Avaliação (1–5)</label>
-              <input name="rating" type="number" min="1" max="5" step="0.1" value={form.rating} onChange={handleChange} className={inputClass} />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Qtd. vendidas</label>
-              <input name="salesCount" type="number" min="0" value={form.salesCount} onChange={handleChange} placeholder="0" className={inputClass} />
-            </div>
-
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-1">
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">URL da imagem</label>
               <input name="image_url" type="url" value={form.image_url} onChange={handleChange} placeholder="https://..." className={inputClass} />
-            </div>
-
-            <div className="sm:col-span-2 flex flex-wrap gap-6">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" name="isFeatured" checked={form.isFeatured} onChange={handleChange} className="w-4 h-4 accent-indigo-600 rounded" />
-                <span className="text-sm text-slate-700 font-medium">Produto em destaque</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" name="isOnSale" checked={form.isOnSale} onChange={handleChange} className="w-4 h-4 accent-rose-500 rounded" />
-                <span className="text-sm text-slate-700 font-medium">Em promoção</span>
-              </label>
             </div>
           </div>
 

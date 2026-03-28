@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import ProductCard from '../components/ProductCard';
 import SearchBar from '../components/SearchBar';
 import CategoryFilter from '../components/CategoryFilter';
-import { INITIAL_PRODUCTS, CATEGORIES } from '../data/products';
+import { CATEGORIES } from '../data/products';
+import { supabase } from '../services/supabase';
 import { SlidersHorizontal, Sparkles, TrendingUp } from 'lucide-react';
 
 const SORT_OPTIONS = [
@@ -19,13 +20,19 @@ export default function Home() {
   const [sort, setSort]         = useState('default');
   const [onSaleOnly, setOnSaleOnly] = useState(false);
 
-  const baseProducts = useMemo(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem('admin_products'));
-      return Array.isArray(stored) && stored.length > 0 ? stored : INITIAL_PRODUCTS;
-    } catch {
-      return INITIAL_PRODUCTS;
-    }
+  const [baseProducts, setBaseProducts] = useState([]);
+
+  React.useEffect(() => {
+    supabase
+      .from('products')
+      .select('*')
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Erro ao buscar produtos:', error);
+        } else if (data) {
+          setBaseProducts(data);
+        }
+      });
   }, []);
 
   const products = useMemo(() => {
@@ -43,10 +50,10 @@ export default function Home() {
     switch (sort) {
       case 'price_asc':  list = [...list].sort((a, b) => a.price - b.price); break;
       case 'price_desc': list = [...list].sort((a, b) => b.price - a.price); break;
-      case 'rating':     list = [...list].sort((a, b) => b.rating - a.rating); break;
-      case 'sales':      list = [...list].sort((a, b) => b.salesCount - a.salesCount); break;
+      case 'rating':     list = [...list].sort((a, b) => (b.rating || 5) - (a.rating || 5)); break;
+      case 'sales':      list = [...list].sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0)); break;
       default:
-        list = [...list].sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0));
+        list = [...list].sort((a, b) => ((b.isFeatured || false) ? 1 : 0) - ((a.isFeatured || false) ? 1 : 0));
     }
 
     return list;

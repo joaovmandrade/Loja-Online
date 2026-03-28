@@ -12,9 +12,13 @@ CREATE TABLE IF NOT EXISTS products (
   name       TEXT        NOT NULL,
   price      NUMERIC     NOT NULL CHECK (price >= 0),
   image_url  TEXT,
+  category   TEXT        DEFAULT 'Geral',
   stock      INTEGER     NOT NULL DEFAULT 0 CHECK (stock >= 0),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Se você já tem a tabela products criada, rode APENAS o comando abaixo para adicionar a coluna:
+-- ALTER TABLE products ADD COLUMN category TEXT DEFAULT 'Geral';
 
 -- ─── Row Level Security ───────────────────────────────────────
 -- Enable RLS (required by Supabase)
